@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import chalk from 'chalk';
 
-import { runTUI } from './tui';
 import type { SkillsMetrics } from './types';
 import type { RenderContext } from './types/RenderContext';
 import type { StatusJSON } from './types/StatusJSON';
@@ -40,7 +39,9 @@ import {
     getPackageVersion,
     getTerminalWidth
 } from './utils/terminal';
+import { sanitizeTerminalText } from './utils/terminal-sanitize';
 import { prefetchUsageDataIfNeeded } from './utils/usage-prefetch';
+import { ensureWindowsUtf8CodePage } from './utils/windows-code-page';
 
 function hasSessionDurationInStatusJson(data: StatusJSON): boolean {
     const durationMs = data.cost?.total_duration_ms;
@@ -73,19 +74,6 @@ async function readStdin(): Promise<string | null> {
         return chunks.join('');
     } catch {
         return null;
-    }
-}
-
-async function ensureWindowsUtf8CodePage() {
-    if (process.platform !== 'win32') {
-        return;
-    }
-
-    try {
-        const { execFileSync } = await import('child_process');
-        execFileSync('chcp.com', ['65001'], { stdio: 'ignore', windowsHide: true });
-    } catch {
-        // Ignore failures to preserve statusline output even in restricted shells.
     }
 }
 
@@ -169,10 +157,14 @@ async function renderMultipleLines(data: StatusJSON) {
             : undefined,
         skillsMetrics,
         compactionData,
-        terminalWidth: getTerminalWidth(),
+        terminalWidth: getTerminalWidth({
+            sessionId: data.session_id,
+            ttlSeconds: settings.terminalWidthCacheTtlSeconds
+        }),
         isPreview: false,
         minimalist: settings.minimalistMode,
         gitCacheTtlSeconds: settings.gitCacheTtlSeconds,
+        customCommandCacheTtlSeconds: settings.customCommandCacheTtlSeconds,
         gitReviewNeedsChecks: lines.some(line => line.some(item => item.type === 'git-ci-status'))
     };
 
@@ -209,7 +201,9 @@ async function renderMultipleLines(data: StatusJSON) {
                 }
 
                 // Replace all spaces with non-breaking spaces to prevent VSCode trimming
-                let outputLine = line.replace(/ /g, '\u00A0');
+                // The renderer's own output is colors and links; this is the last
+                // stop before the terminal for anything else (separators, settings)
+                let outputLine = sanitizeTerminalText(line).replace(/ /g, '\u00A0');
 
                 // Add reset code at the beginning to override Claude Code's dim setting
                 outputLine = '\x1b[0m' + outputLine;
@@ -237,7 +231,7 @@ async function renderMultipleLines(data: StatusJSON) {
         && settings.updatemessage.remaining
         && settings.updatemessage.remaining > 0) {
         // Display the message
-        console.log(settings.updatemessage.message);
+        console.log(sanitizeTerminalText(settings.updatemessage.message));
 
         // Decrement the remaining count
         const newRemaining = settings.updatemessage.remaining - 1;
@@ -246,7 +240,6 @@ async function renderMultipleLines(data: StatusJSON) {
         if (newRemaining <= 0) {
             // Remove the entire updatemessage block
             const { updatemessage, ...newSettings } = settings;
-            void updatemessage;
             await saveSettings(newSettings);
         } else {
             // Update the remaining count
@@ -320,7 +313,7 @@ async function main() {
 
     // Check if we're in a piped/non-TTY environment first
     if (!process.stdin.isTTY) {
-        await ensureWindowsUtf8CodePage();
+        ensureWindowsUtf8CodePage();
 
         // We're receiving piped input
         const input = await readStdin();
@@ -348,9 +341,13 @@ async function main() {
         const settings = await loadSettings();
         if (settings.updatemessage) {
             const { updatemessage, ...newSettings } = settings;
-            void updatemessage;
             await saveSettings(newSettings);
         }
+        // Imported lazily: the TUI pulls in ink/React/yoga-layout, which the
+        // status line render path never touches. Claude Code re-runs this
+        // binary every couple of seconds, so keeping that graph off the
+        // render path is worth the dynamic import here.
+        const { runTUI } = await import('./tui');
         runTUI();
     }
 }

@@ -47,6 +47,40 @@
 
 ## 🆕 Recent Updates
 
+### v2.2.32 - Safer imports, proxy handling, and rendering fixes
+
+- **📥 Review imported commands** - Config imports show new shell commands in full and require confirmation with Cancel selected by default; control characters are displayed as escaped text.
+- **🔒 Private settings stay private** - Saves preserve restrictive settings-file permissions, Claude settings backups inherit the source permissions, and installation stops rather than overwriting unreadable Claude settings.
+- **🌐 Proxy exclusions and deadlines** - Usage and Claude Status requests honor `NO_PROXY` and `no_proxy` and have total five-second deadlines; JJ commands also time out after five seconds.
+- **⏳ Accurate cache timer state** - Interrupts and local slash commands such as `/cost` no longer leave Cache Timer reporting `HOT`.
+- **⚡ Faster Git and text rendering** - Git widgets skip unnecessary calls outside repositories and keep separate caches per working directory; text-width calculations reuse Unicode measurements, and Git file/URL parsing avoids quadratic slowdowns.
+- **📏 Reliable styled-text truncation** - Width limits remain correct when ANSI styling or hyperlinks split an emoji or another display cluster.
+- **🛡️ Command and file handling** - Update versions are validated before installation, fonts download into private temporary folders, branch/host names stay literal CLI arguments, and Skills logs reject unsafe session IDs.
+- **🔄 Reliable usage backoff** - Successful usage requests preserve rate-limit backoff written by concurrent renders.
+
+### v2.2.31 - Cost tracking, customization, and broad reliability improvements
+
+Across the updates since the September 3 release, 64 PRs have been incorporated, plus additional security fixes and test isolation.
+
+- **🩹 Miscellaneous bug fixes** - 29 dedicated bug-fix PRs since September 3 cover usage/account caching, transcript reading, Git/JJ and directory displays, Unicode truncation, Powerline colors and layout, keyboard controls, settings recovery, hooks, and installation/update flows.
+- **🔒 Security fixes** - Three additional fixes restrict repository-controlled Git commands, resolve Windows helper executables from PATH, and filter terminal control sequences while preserving colors and hyperlinks.
+- **💰 Session Cost Rate** - Track session cost per hour of active API time or total session time, with a one-minute minimum before showing a rate.
+- **📅 Extra Usage Daily Budget** - Spread the remaining monthly spending limit over the remaining UTC days, with an option to skip future weekend days.
+- **🏷️ Editable labels** - Press `e` to customize text labels.
+- **⚡ Faster rendering** - Piped status lines skip loading the interactive TUI, reducing startup work on every repaint.
+- **🧰 Maintenance** - Shared widget and editor implementations, broader regression coverage, more reliable tests, dependency updates, and CI actions pinned to commit SHAs.
+
+### v2.2.29 - v2.2.30 - Faster rendering, command caching, and reliable usage
+
+- **⚡ Faster terminal width detection** - Linux can probe the terminal directly without subprocesses, portable fallbacks skip shell wrappers, and configurable caching reuses failed width probes across renders while detected widths refresh on the next render.
+- **🔧 Custom command caching and timeouts** - Opt into output caching for up to 60 seconds from Configure Status Line, and enforce command timeouts even when descendants retain output pipes.
+- **🔣 More customizable Git/JJ symbols** - Press `g` to edit insertion/deletion signs, Git clean/dirty markers, and the JJ Revision prefix, including empty glyphs for compact layouts.
+- **🙈 Hide reset-timer placeholders** - Block Reset Timer and Weekly Reset Timer can hide loading and error output through `h`; use `f` for 12/24-hour format and `o` for weekly hours-only display.
+- **👤 Reliable usage account selection** - macOS usage lookup respects the active config profile's Keychain credentials, and access-token refreshes preserve cached usage when the refresh token is unchanged.
+- **📊 Unused model quotas show zero** - Weekly model usage widgets recognize an explicit 0% quota even before the API supplies a reset timestamp.
+- **↔️ Full-width layouts by default** - New configurations and settings without an explicit flex mode now use Full width always.
+- **⏱️ Bounded Git commands** - Cached Git commands have a five-second timeout so a stalled Git invocation cannot block the status line indefinitely.
+
 ### v2.2.28 - v2.2.29 - Service health, flexible formatting, and resilient rendering
 
 - **🩺 Claude service health** - Added a `Claude Status` widget with live severity, a cached 48-hour incident-history strip, stale-data fallback, and graceful `?` output when status data is unavailable.
@@ -131,6 +165,10 @@
 - **📉 Timer short bars** - Block Timer, Block Reset Timer, and Weekly Reset Timer now support compact short-bar progress displays.
 - **🔕 Quieter hook output** - Hook handling now suppresses no-op JSON output so non-status updates stay silent.
 
+<br />
+<details>
+<summary><b>Older updates (v2.2.12 and earlier)</b></summary>
+
 ### v2.2.9 - v2.2.12 - GitLab support, reset timers, context, compaction, and git widgets
 
 - **🦊 GitLab PR/MR support** - `Git Branch` and `Git PR/MR` now support GitHub, GitLab, and compatible self-hosted remotes, using `gh` or `glab` as appropriate.
@@ -150,10 +188,6 @@
 - **🏷️ Cleaner model display** - The Model widget strips trailing context suffixes like `(1M context)`; use `Context Window` when you want the total window size shown.
 - **🧹 Cleaner empty-widget separators** - Manual separators now collapse around widgets that render empty, avoiding dangling separators when hide-when-empty widgets disappear.
 - **🧱 More resilient Git helpers** - Git widgets handle missing or unusual git command output more defensively.
-
-<br />
-<details>
-<summary><b>Older updates (v2.2.8 and earlier)</b></summary>
 
 ### v2.2.8 - Git widgets, smarter picker search, and minimalist mode
 
@@ -350,9 +384,11 @@ The interactive configuration tool provides a terminal UI where you can:
 > export CLAUDE_CONFIG_DIR=/custom/path/to/.claude
 > ```
 
-> 🌐 **Usage API proxy:** Usage widgets honor the uppercase `HTTPS_PROXY` environment variable for their direct API call to Anthropic.
+> 🌐 **HTTPS proxy:** Usage and Claude Status requests honor uppercase `HTTPS_PROXY`, with exclusions from both `NO_PROXY` and `no_proxy`. See [proxy settings](docs/USAGE.md#proxy-settings) for host, domain, and port matching.
 
 > 🪟 **Windows Support:** PowerShell examples, installation notes, fonts, troubleshooting, WSL, and Windows Terminal configuration are in [docs/WINDOWS.md](docs/WINDOWS.md).
+
+> 🫥 **Status line empty in one folder?** Claude Code only runs the status line command in trusted workspaces, and nested git repositories stopped inheriting trust in Claude Code 2.1.232. See [Status line empty in one folder](docs/USAGE.md#status-line-empty-in-one-folder-but-fine-elsewhere).
 
 </details>
 
@@ -440,6 +476,7 @@ If ccstatusline is useful to you, consider buying me a coffee:
 - [crispy-recall](https://github.com/TheSylvester/crispy-recall) - Searchable memory for your Claude Code and Codex sessions. Local, fast, no daemon.
 - [statuslin.es](https://statuslin.es) - Community gallery of Claude Code status lines with live, sandbox-rendered previews.
 - [claude-carbon](https://github.com/gwittebolle/claude-carbon) - Live CO2 estimate for your Claude Code sessions, next to the cost. Ships a `--segment` mode built to embed as a Custom Command widget.
+- [claudenews](https://github.com/bhpark1013/claudenews) - Developer news in your status line while the agent works: Hacker News, GitHub Trending, and per-language sources, with optional translation and short summaries. Ships a `--segment` mode built to embed as a Custom Command widget.
 
 ## 🙏 Acknowledgments
 
