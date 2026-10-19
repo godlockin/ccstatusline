@@ -179,7 +179,7 @@ describe('defaultPaddingSide', () => {
             const lines = [[pre('A', { merge: 'no-padding' }), pre('B')]];
             const settings = createSettings();
             // '.' + 'A' + 'B' + '.' = 4: the merged pair renders as '.AB.'
-            expect(calculateMaxWidthsFromPreRendered(lines, settings)).toEqual([4]);
+            expect(calculateMaxWidthsFromPreRendered(lines, settings)).toEqual([[4]]);
             expect(render([text('a', { merge: 'no-padding' }), text('b')], { 0: 'A', 1: 'B' }, settings)).toBe('.AB.');
         });
     });
