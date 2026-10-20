@@ -7,6 +7,18 @@ SETTINGS="$HOME/.claude/settings.json"
 
 echo "==> Installing ccstatusline from $SCRIPT_DIR"
 
+# Route bun through the system proxy when one is configured: bun's direct
+# TLS connections get reset on some networks, while the local proxy works.
+if scutil --proxy | grep -q "HTTPSEnable : 1"; then
+  PROXY_HOST="$(scutil --proxy | awk '/^HTTPSProxy/ { print $3 }')"
+  PROXY_PORT="$(scutil --proxy | awk '/^HTTPSPort/ { print $3 }')"
+  if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
+    export HTTPS_PROXY="http://$PROXY_HOST:$PROXY_PORT"
+    export HTTP_PROXY="$HTTPS_PROXY"
+    echo "==> Using system proxy $HTTPS_PROXY for bun"
+  fi
+fi
+
 # Build
 echo "==> Building..."
 bun install --frozen-lockfile
